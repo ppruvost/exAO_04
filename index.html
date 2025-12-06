@@ -1,0 +1,272 @@
+# Option B — Codes complets corrigés
+
+Ci‑dessous : **index.html**, **webcam.js**, **script.js** (version robuste + graphes temps réel X/Y/Angle).
+
+---
+
+## 1) index.html (version minimale fonctionnelle)
+
+```html
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analyse mire – Option B</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body { font-family: Arial; margin: 0; padding: 10px; }
+    #video { width: 100%; max-width: 500px; background: #000; }
+    .controls button { padding: 10px; margin: 5px; }
+    .disabled { opacity: 0.4; pointer-events: none; }
+  </style>
+</head>
+
+<body>
+  <h2>Analyse de mire – Accélération & Angle</h2>
+
+  <video id="video" autoplay playsinline></video>
+
+  <div class="controls">
+    <button id="btnStartCam">Démarrer caméra</button>
+    <button id="btnInstant" class="btn-detection">Détection instantanée</button>
+    <button id="btnAutoCalib" class="btn-detection">Auto‑calibration + angle</button>
+    <button id="btnCSV">Exporter CSV</button>
+  </div>
+
+  <div id="infoAngle">Angle : --.-°</div>
+
+  <canvas id="chartXYAngle" width="900" height="350"></canvas>
+
+  <!-- Fichiers JS -->
+  <script src="webcam.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
+```
+
+---
+
+## 2) webcam.js (version robuste avec verrou vidéo + boucle sûre)
+
+```javascript
+// webcam.js — caméra + boucle sécurisée
+
+let video = null;
+let stream = null;
+let videoReadyForAnalysis = false;
+
+async function startCamera() {
+  video = document.getElementById("video");
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false
+    });
+    video.srcObject = stream;
+
+    video.addEventListener("loadedmetadata", () => {
+      if (video.videoWidth > 50 && video.videoHeight > 50) {
+        videoReadyForAnalysis = true;
+      }
+    });
+
+    video.addEventListener("resize", () => {
+      if (video.videoWidth > 50 && video.videoHeight > 50) {
+        videoReadyForAnalysis = true;
+      }
+    });
+
+  } catch (e) {
+    console.error("Erreur accès caméra:", e);
+  }
+}
+
+// Boucle d'analyse continue
+function startWebcamAnalysis() {
+  function loop() {
+    if (videoReadyForAnalysis) {
+      try {
+        autoCalibAngle();
+      } catch (e) {
+        console.error("Erreur autoCalibAngle:", e);
+      }
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+// Gestion boutons
+window.addEventListener("load", () => {
+  document.getElementById("btnStartCam").onclick = async () => {
+    await startCamera();
+    startWebcamAnalysis();
+  };
+});
+```
+
+---
+
+## 3) script.js (détection + buffers + graphe X/Y/Angle + CSV)
+
+```javascript
+// script.js — option B : X, Y, Angle en temps réel
+
+//-------------------------------------------
+// Boutons & info
+//-------------------------------------------
+const infoAngle = document.getElementById("infoAngle");
+const btnInstant = document.getElementById("btnInstant");
+const btnAutoCalib = document.getElementById("btnAutoCalib");
+const btnCSV = document.getElementById("btnCSV");
+
+function setButtonsEnabled(en) {
+  document.querySelectorAll('.btn-detection').forEach(b => {
+    b.disabled = !en;
+    b.classList.toggle("disabled", !en);
+  });
+}
+
+//-------------------------------------------
+// Buffers (X,Y,angle)
+//-------------------------------------------
+const MAX_POINTS = 500;
+let tBuffer = [];
+let xBuffer = [];
+let yBuffer = [];
+let angleBuffer = [];
+
+//-------------------------------------------
+// Chart.js — 3 courbes synchronisées
+//-------------------------------------------
+const ctx = document.getElementById('chartXYAngle').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: tBuffer,
+    datasets: [
+      { label: "X (px)", data: xBuffer, borderWidth: 1, fill: false },
+      { label: "Y (px)", data: yBuffer, borderWidth: 1, fill: false },
+      { label: "Angle (°)", data: angleBuffer, borderWidth: 1, fill: false, yAxisID: 'angle' }
+    ]
+  },
+  options: {
+    animation: false,
+    responsive: true,
+    scales: {
+      y: { type: 'linear', position: 'left' },
+      angle: { type: 'linear', position: 'right', grid: { drawOnChartArea: false } }
+    }
+  }
+});
+
+//-------------------------------------------
+// PUSH dans le graphe
+//-------------------------------------------
+function pushDetectionToBuffers(p) {
+  const t = (performance.now() / 1000).toFixed(3);
+
+  tBuffer.push(t);
+  xBuffer.push(p.x);
+  yBuffer.push(p.y);
+  angleBuffer.push(p.angle);
+
+  if (tBuffer.length > MAX_POINTS) {
+    tBuffer.shift();
+    xBuffer.shift();
+    yBuffer.shift();
+    angleBuffer.shift();
+  }
+
+  chart.data.labels = [...tBuffer];
+  chart.data.datasets[0].data = [...xBuffer];
+  chart.data.datasets[1].data = [...yBuffer];
+  chart.data.datasets[2].data = [...angleBuffer];
+  chart.update('none');
+}
+
+//-------------------------------------------
+// Détection instantanée — PROTÉGÉE
+//-------------------------------------------
+btnInstant.onclick = () => {
+  setButtonsEnabled(false);
+
+  const p = detectMireInstantanee();
+  if (p) {
+    infoAngle.textContent = `Angle : ${p.angle.toFixed(1)}°`;
+    pushDetectionToBuffers(p);
+  }
+
+  setButtonsEnabled(true);
+};
+
+//-------------------------------------------
+// Auto‑calibration (appelé en continu par webcam.js)
+//-------------------------------------------
+function autoCalibAngle() {
+  const p = detectMireInstantanee();
+  if (!p) return;
+
+  infoAngle.textContent = `Angle : ${p.angle.toFixed(1)}°`;
+  pushDetectionToBuffers(p);
+}
+
+//-------------------------------------------
+// Détection robuste : Hough + ellipse protégés
+//-------------------------------------------
+function detectMireInstantanee() {
+  try {
+    if (!video || video.videoWidth <= 0) return null;
+
+    // → ICI tu mets ton extraction frame
+    const frame = grabFrameFromVideo(video); // ta fonction existante
+    if (!frame) return null;
+
+    // → Hough
+    const circle = detectCircleWithHough(frame);
+    if (!circle) return null;
+
+    // → Points ellipse
+    const pts = extractEllipsePoints(frame, circle);
+    if (!pts || pts.length < 10) return null;
+
+    // → Fit ellipse
+    const el = fitEllipse(pts);
+    if (!el || !el.center) return null;
+
+    // → Final
+    const p = computeFinalParamsFromEllipse(el);
+    return p;
+  }
+  catch (e) {
+    console.error("Erreur detectMireInstantanee:", e);
+    return null;
+  }
+}
+
+//-------------------------------------------
+// Export CSV
+//-------------------------------------------
+btnCSV.onclick = () => {
+  let csv = "time_s;x_px;y_px;angle_deg\n";
+  for (let i = 0; i < tBuffer.length; i++) {
+    csv += `${tBuffer[i]};${xBuffer[i]};${yBuffer[i]};${angleBuffer[i]}\n`;
+  }
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "mire_optionB.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+};
+```
+
+---
+
+Si tu veux maintenant la **version avec smoothing + dérivée (vitesse, accélération)** ou la **FFT**, dis‑moi ce que tu veux ajouter et je l’intègre proprement dans le même ensemble.
