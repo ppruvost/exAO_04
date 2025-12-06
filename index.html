@@ -3,43 +3,44 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Analyse de mire – Mode Automatique</title>
-
+<title>Analyse automatique — exAO 02</title>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Style -->
 <link rel="stylesheet" href="style.css" />
+
+<!-- OpenCV -->
+<script async src="https://docs.opencv.org/4.x/opencv.js"></script>
 </head>
 
-
 <body>
-<h2>Analyse de mire – Accélération & Angle (Auto)</h2>
 
+<h2>Analyse automatique — Détection + Graphiques</h2>
 
+<!-- Vidéo -->
 <video id="video" autoplay playsinline></video>
+<canvas id="canvasProcess" style="display:none;"></canvas>
 
-
+<!-- Contrôles -->
 <div class="controls">
-<button id="btnStartCam">Initialiser webcam</button>
-<button id="btnStopRec" disabled>Arrêter l’enregistrement</button>
+    <button id="startBtn">Démarrer acquisition</button>
+    <button id="stopBtn" disabled>Arrêter acquisition</button>
+    <button id="csvBtn">Exporter CSV</button>
 </div>
 
-
-<div id="infos">
-<div>Échantillons : <span id="sampleCount">0</span></div>
-<div>a estimée : <span id="aEst">—</span> m/s²</div>
-<div>Angle : <span id="angleEst">—</span>°</div>
-</div>
-
+<!-- Infos en direct -->
+<div id="infos">x = — m — v = — m/s</div>
 
 <h3>Données & Graphiques</h3>
+
 <canvas id="chartPos" width="900" height="300"></canvas>
 <canvas id="chartVit" width="900" height="300"></canvas>
 <canvas id="chartReg" width="900" height="300"></canvas>
 
-
-<!-- Fichiers JS -->
-<script src="webcam.js"></script>
+<!-- Script principal -->
 <script src="script.js"></script>
+
 </body>
 </html>
