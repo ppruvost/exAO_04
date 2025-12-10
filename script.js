@@ -8,6 +8,7 @@ let audioContext;
 let analyser;
 let microphone;
 let isRunning = false;
+let calibrationFactor = 0.6; // Facteur de calibration à ajuster selon tes tests
 
 // Fonction pour démarrer le sonomètre
 startButton.addEventListener("click", async () => {
@@ -18,8 +19,9 @@ startButton.addEventListener("click", async () => {
     analyser.fftSize = 256;
 
     try {
-        microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const source = audioContext.createMediaStreamSource(microphone);
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        microphone = stream;
+        const source = audioContext.createMediaStreamSource(stream);
         source.connect(analyser);
         isRunning = true;
         updateSoundLevel();
@@ -32,12 +34,11 @@ startButton.addEventListener("click", async () => {
 // Fonction pour arrêter le sonomètre
 stopButton.addEventListener("click", () => {
     if (!isRunning) return;
-
     microphone.getTracks().forEach(track => track.stop());
     audioContext.close();
     isRunning = false;
     soundBar.style.width = "0%";
-    valueDisplay.textContent = "0";
+    valueDisplay.textContent = "0 dB";
 });
 
 // Mise à jour du niveau sonore
@@ -48,25 +49,24 @@ function updateSoundLevel() {
     analyser.getByteFrequencyData(dataArray);
 
     // Calcul du niveau sonore moyen
-    let sum = 0;
-    for (let i = 0; i < dataArray.length; i++) {
-        sum += dataArray[i];
-    }
+    const sum = dataArray.reduce((a, b) => a + b, 0);
     const average = sum / dataArray.length;
-    const soundLevel = Math.min(10, Math.round(average / 10));
 
-    // Mise à jour de la barre et de l'affichage
-    valueDisplay.textContent = soundLevel;
-    soundBar.style.width = `${soundLevel * 10}%`;
+    // Conversion en dB (0-60) avec calibration
+    const soundLevel = Math.min(60, Math.round(average * calibrationFactor));
 
-    // Couleur selon le niveau
-    if (soundLevel < 5) {
+    // Mise à jour de l'affichage
+    valueDisplay.textContent = `${soundLevel} dB`;
+    soundBar.style.width = `${(soundLevel / 60) * 100}%`;
+
+    // Couleur et alarme selon le niveau
+    if (soundLevel < 40) {
         soundBar.style.background = "green";
-    } else if (soundLevel < 8) {
+    } else if (soundLevel < 55) {
         soundBar.style.background = "orange";
     } else {
         soundBar.style.background = "red";
-        alarmSound.play(); // Alerte sonore
+        alarmSound.play(); // Déclenche l'alarme si > 55 dB
     }
 
     requestAnimationFrame(updateSoundLevel);
