@@ -3,11 +3,18 @@ const valueDisplay = document.getElementById("value");
 const startButton = document.getElementById("startButton");
 const stopButton = document.getElementById("stopButton");
 const alarmSound = document.getElementById("alarmSound");
+const emojiDisplay = document.getElementById("emoji");
 
 let audioContext;
 let analyser;
 let microphone;
 let isRunning = false;
+
+// Historique des valeurs sonores (dernières 30s)
+let soundHistory = [];
+const HISTORY_DURATION = 30;     // secondes
+const FPS_APPROX = 60;           // fréquence estimée de requestAnimationFrame
+const MAX_HISTORY = HISTORY_DURATION * FPS_APPROX;
 
 // Fonction pour démarrer le sonomètre
 startButton.addEventListener("click", async () => {
@@ -36,8 +43,11 @@ stopButton.addEventListener("click", () => {
     microphone.getTracks().forEach(track => track.stop());
     audioContext.close();
     isRunning = false;
+
+    soundHistory = [];
     soundBar.style.width = "0%";
     valueDisplay.textContent = "0";
+    emojiDisplay.textContent = "😊";
 });
 
 // Mise à jour du niveau sonore
@@ -47,26 +57,40 @@ function updateSoundLevel() {
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(dataArray);
 
-    // Calcul du niveau sonore moyen
+    // Calcul du niveau sonore instantané
     let sum = 0;
-    for (let i = 0; i < dataArray.length; i++) {
-        sum += dataArray[i];
+    for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+    let instantLevel = Math.min(10, Math.round((sum / dataArray.length) / 10));
+
+    // Ajout au buffer historique
+    soundHistory.push(instantLevel);
+
+    // On limite l'historique à 30 secondes
+    if (soundHistory.length > MAX_HISTORY) {
+        soundHistory.shift();
     }
-    const average = sum / dataArray.length;
-    const soundLevel = Math.min(10, Math.round(average / 10));
 
-    // Mise à jour de la barre et de l'affichage
-    valueDisplay.textContent = soundLevel;
-    soundBar.style.width = `${soundLevel * 10}%`;
+    // Moyenne sur les 30 dernières secondes
+    const historyAverage =
+        soundHistory.reduce((a, b) => a + b, 0) / soundHistory.length;
 
-    // Couleur selon le niveau
-    if (soundLevel < 5) {
+    const avgLevel = Math.round(historyAverage);
+
+    // Mise à jour visuelle
+    valueDisplay.textContent = avgLevel;
+    soundBar.style.width = `${avgLevel * 10}%`;
+
+    // Emoji + couleur en fonction du niveau moyen
+    if (avgLevel < 5) {
         soundBar.style.background = "green";
-    } else if (soundLevel < 8) {
+        emojiDisplay.textContent = "😊"; 
+    } else if (avgLevel < 8) {
         soundBar.style.background = "orange";
+        emojiDisplay.textContent = "🤔"; 
     } else {
         soundBar.style.background = "red";
-        alarmSound.play(); // Alerte sonore
+        emojiDisplay.textContent = "🤯"; 
+        alarmSound.play();
     }
 
     requestAnimationFrame(updateSoundLevel);
