@@ -14,6 +14,7 @@ body {
     padding: 2rem;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 320px;
 }
 
 .meter {
@@ -28,7 +29,8 @@ body {
 .bar {
     height: 100%;
     width: 0%;
-    transition: width 0.3s, background 0.3s;
+    background: green;
+    transition: width 0.3s ease, background 0.3s ease;
 }
 
 button {
@@ -38,6 +40,11 @@ button {
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
+    transition: opacity 0.2s ease;
+}
+
+button:hover {
+    opacity: 0.8;
 }
 
 #startButton {
@@ -47,5 +54,4 @@ button {
 
 #stopButton {
     background: #f44336;
-    color: white;
-}
+    col
