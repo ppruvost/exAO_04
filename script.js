@@ -12,8 +12,8 @@ let isRunning = false;
 
 // Historique des valeurs sonores (dernières 30s)
 let soundHistory = [];
-const HISTORY_DURATION = 30;     // secondes
-const FPS_APPROX = 60;           // fréquence estimée de requestAnimationFrame
+const HISTORY_DURATION = 30; // secondes
+const FPS_APPROX = 60;
 const MAX_HISTORY = HISTORY_DURATION * FPS_APPROX;
 
 // Fonction pour démarrer le sonomètre
@@ -28,8 +28,10 @@ startButton.addEventListener("click", async () => {
         microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
         const source = audioContext.createMediaStreamSource(microphone);
         source.connect(analyser);
+
         isRunning = true;
         updateSoundLevel();
+
     } catch (err) {
         console.error("Erreur microphone :", err);
         alert("Impossible d'accéder au microphone.");
@@ -57,30 +59,26 @@ function updateSoundLevel() {
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
     analyser.getByteFrequencyData(dataArray);
 
-    // Calcul du niveau sonore instantané
+    // Niveau instantané
     let sum = 0;
     for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
     let instantLevel = Math.min(60, Math.round((sum / dataArray.length) / 60));
 
-    // Ajout au buffer historique
+    // Historique
     soundHistory.push(instantLevel);
-
-    // On limite l'historique à 30 secondes
     if (soundHistory.length > MAX_HISTORY) {
         soundHistory.shift();
     }
 
-    // Moyenne sur les 30 dernières secondes
-    const historyAverage =
-        soundHistory.reduce((a, b) => a + b, 0) / soundHistory.length;
-
+    // Moyenne sur l’historique
+    const historyAverage = soundHistory.reduce((a, b) => a + b, 0) / soundHistory.length;
     const avgLevel = Math.round(historyAverage);
 
     // Mise à jour visuelle
     valueDisplay.textContent = avgLevel;
-    soundBar.style.width = ${avgLevel * 10}%;
+    soundBar.style.width = `${avgLevel * 10}%`;
 
-    // Emoji + couleur en fonction du niveau moyen
+    // Emoji + couleur
     if (avgLevel < 5) {
         soundBar.style.background = "green";
         emojiDisplay.textContent = "😊"; 
