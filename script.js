@@ -1,16 +1,35 @@
-const startBtn = document.getElementById("start");
-const output = document.getElementById("db");
+let audioContext;
+let analyser;
+let dataArray;
+let micStream;
+let running = false;
 
-let audioContext, analyser, dataArray, micStream;
+const startBtn = document.getElementById("startButton");
+const stopBtn = document.getElementById("stopButton");
+const soundBar = document.getElementById("soundBar");
+const valueDisp = document.getElementById("value");
+const emoji = document.getElementById("emoji");
+const alarmSound = document.getElementById("alarmSound");
+
+// iPhone : doit être unmuted *après* interaction humaine
+startBtn.addEventListener("click", () => {
+    alarmSound.muted = false;
+    startMeter();
+});
+
+stopBtn.addEventListener("click", stopMeter);
 
 async function startMeter() {
+    if (running) return;
+    running = true;
+
     try {
-        // Obligatoire pour iPhone : requête micro avec echoCancellation=false
+        // iPhone nécessite ces paramètres exacts
         micStream = await navigator.mediaDevices.getUserMedia({
             audio: {
                 echoCancellation: false,
                 noiseSuppression: false,
-                autoGainControl: false,
+                autoGainControl: false
             }
         });
 
@@ -26,34 +45,52 @@ async function startMeter() {
 
         measure();
     } catch (e) {
-        console.error(e);
-        alert("Impossible d’accéder au microphone.");
+        console.error("Erreur accès micro :", e);
+        alert("Impossible d'accéder au micro : " + e.message);
+        running = false;
     }
 }
 
+function stopMeter() {
+    running = false;
+
+    if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+        micStream = null;
+    }
+    if (audioContext) audioContext.close();
+
+    valueDisp.textContent = "0";
+    soundBar.style.width = "0%";
+    emoji.textContent = "😊";
+}
+
 function measure() {
+    if (!running) return;
+
     analyser.getByteTimeDomainData(dataArray);
 
-    // Calcul RMS
     let sum = 0;
     for (let i = 0; i < dataArray.length; i++) {
         let v = (dataArray[i] - 128) / 128;
         sum += v * v;
     }
     let rms = Math.sqrt(sum / dataArray.length);
-
-    // Conversion pseudo-dB (approx.) — valeur relative
     let db = 20 * Math.log10(rms);
-
-    // Mise en plage lisible
     if (!isFinite(db)) db = -100;
-    db = Math.max(-90, db); 
 
-    output.textContent = (db + 90).toFixed(1); // ~0 à 90 dB
+    // Converti en 0–90 dB approx.
+    let displayDb = Math.max(0, (db + 90));
+    valueDisp.textContent = displayDb.toFixed(1);
+
+    // Mise à jour barre
+    let percent = Math.min(100, (displayDb / 90) * 100);
+    soundBar.style.width = percent + "%";
+
+    // Emoji selon le niveau
+    if (displayDb < 30) emoji.textContent = "😊";
+    else if (displayDb < 60) emoji.textContent = "😐";
+    else emoji.textContent = "😣";
 
     requestAnimationFrame(measure);
 }
-
-startBtn.addEventListener("click", () => {
-    if (!audioContext) startMeter();
-});
