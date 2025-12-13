@@ -3,9 +3,12 @@ let analyser;
 let dataArray;
 let micStream;
 let running = false;
-let dbHistory = []; // Tableau pour stocker les valeurs de dB
-let maxHistoryLength = 100; // Nombre maximal de points à afficher
-let soundChart; // Variable pour le graphique
+let dbHistory = [];
+let dbValuesForAverage = []; // Tableau pour stocker les valeurs de dB sur 5 secondes
+let maxHistoryLength = 600; // 10 minutes * 6 valeurs/seconde (1 valeur toutes les 100ms)
+let soundChart;
+let lastUpdateTime = 0;
+let averageUpdateInterval = 5000; // Intervalle de 5 secondes pour la moyenne
 
 const startBtn = document.getElementById("startButton");
 const stopBtn = document.getElementById("stopButton");
@@ -24,7 +27,7 @@ function initChart() {
             datasets: [
                 {
                     label: "Niveau sonore (dB)",
-                    data: dbHistory,
+                    data: Array(maxHistoryLength).fill(0),
                     borderColor: "rgb(75, 192, 192)",
                     tension: 0.1,
                     fill: false,
@@ -39,6 +42,9 @@ function initChart() {
                     min: 0,
                     max: 90,
                 },
+                x: {
+                    display: false // Masquer les labels de l'axe X pour le défilement
+                }
             },
         },
     });
@@ -48,10 +54,17 @@ function initChart() {
 function updateChart(db) {
     dbHistory.push(db);
     if (dbHistory.length > maxHistoryLength) {
-        dbHistory.shift(); // Supprime le premier élément si le tableau est trop long
+        dbHistory.shift();
     }
     soundChart.data.datasets[0].data = dbHistory;
     soundChart.update();
+}
+
+// Calcul de la moyenne sur 5 secondes
+function calculateAverage() {
+    if (dbValuesForAverage.length === 0) return 0;
+    const sum = dbValuesForAverage.reduce((a, b) => a + b, 0);
+    return Math.round(sum / dbValuesForAverage.length);
 }
 
 // iPhone : doit être unmuted *après* interaction humaine
@@ -65,10 +78,10 @@ stopBtn.addEventListener("click", stopMeter);
 async function startMeter() {
     if (running) return;
     running = true;
-    dbHistory = []; // Réinitialise l'historique
+    dbHistory = [];
+    dbValuesForAverage = [];
 
     try {
-        // iPhone nécessite ces paramètres exacts
         micStream = await navigator.mediaDevices.getUserMedia({
             audio: {
                 echoCancellation: false,
@@ -87,7 +100,7 @@ async function startMeter() {
 
         source.connect(analyser);
 
-        initChart(); // Initialise le graphique
+        initChart();
         measure();
     } catch (e) {
         console.error("Erreur accès micro :", e);
@@ -124,11 +137,19 @@ function measure() {
     let db = 20 * Math.log10(rms);
     if (!isFinite(db)) db = -100;
 
-    // Converti en 0–90 dB approx.
     let displayDb = Math.max(0, db + 90);
-    displayDb = Math.round(displayDb); // Arrondi sans virgule
 
-    valueDisp.textContent = displayDb;
+    // Stocker les valeurs pour la moyenne
+    dbValuesForAverage.push(displayDb);
+
+    // Mise à jour de la moyenne toutes les 5 secondes
+    const currentTime = Date.now();
+    if (currentTime - lastUpdateTime >= averageUpdateInterval) {
+        const averageDb = calculateAverage();
+        valueDisp.textContent = averageDb;
+        dbValuesForAverage = []; // Réinitialiser le tableau pour les prochaines 5 secondes
+        lastUpdateTime = currentTime;
+    }
 
     // Mise à jour barre
     let percent = Math.min(100, (displayDb / 90) * 100);
