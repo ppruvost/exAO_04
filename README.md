@@ -18,8 +18,8 @@ Le bruit en classe a un impact négatif sur l'apprentissage et la concentration 
    - [Lien vers l'étude de l'INRS sur le bruit en milieu scolaire](https://www.inrs.fr/risques/bruit/ce-qu-il-faut-retenir.html)
 
 2. **Impact du bruit sur la cognition** :
-   - Selon une étude publiée dans **Environmental Health Perspectives**, le bruit ambiant peut altérer les capacités cognitives des enfants, notamment en lecture et en résolution de problèmes.
-   - [Lien vers l'étude sur l'impact du bruit sur la cognition](https://ehp.niehs.nih.gov/doi/full/10.1289/ehp.121-a302)
+   - Selon une étude publiée dans **The Journal of the Acoustical Society of America**, le bruit en classe peut réduire la capacité des élèves à comprendre et à retenir les informations enseignées.
+   - [Lien vers une étude sur l'impact du bruit sur les performances scolaires](https://asa.scitation.org/doi/10.1121/10.0001520)
 
 3. **Recommandations de l'OMS** :
    - L'**Organisation Mondiale de la Santé (OMS)** recommande de limiter le niveau sonore en classe pour favoriser un environnement propice à l'apprentissage.
