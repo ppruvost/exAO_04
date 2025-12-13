@@ -9,17 +9,18 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Style pour le lien vers le README */
-        .readme-container {
+        .readme-link {
+            display: block;
             text-align: center;
-            margin-top: 15px;
+            margin-top: 10px;
             font-size: 14px;
         }
-        .readme-link {
+        .readme-link a {
             color: #4CAF50;
             text-decoration: none;
             font-weight: bold;
         }
-        .readme-link:hover {
+        .readme-link a:hover {
             text-decoration: underline;
         }
     </style>
@@ -45,13 +46,13 @@
 
         <!-- Graphique -->
         <canvas id="soundChart" width="400" height="200" style="margin-top: 20px;"></canvas>
-    </div>
 
-    <!-- Lien vers le README -->
-    <div class="readme-container">
-        <a href="README.md" class="readme-link" target="_blank" rel="noopener noreferrer">
-            En savoir plus sur cet outil pédagogique
-        </a>
+        <!-- Lien vers le README sous le graphique -->
+        <div class="readme-link">
+            <a href="README.md" target="_blank" rel="noopener noreferrer">
+                En savoir plus sur cet outil pédagogique
+            </a>
+        </div>
     </div>
 
     <!-- Son d'alarme (optimisé iOS) -->
